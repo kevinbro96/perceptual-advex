@@ -333,29 +333,30 @@ if __name__ == '__main__':
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # VALIDATION
-        print('BEGIN VALIDATION')
-        model.eval()
+        if epoch % 10 == 0:
+            # VALIDATION
+            print('BEGIN VALIDATION')
+            model.eval()
 
-        evaluation.evaluate_against_attacks(
-            model, validation_attacks, val_loader, parallel=args.parallel,
-            writer=writer, iteration=iteration, num_batches=args.val_batches,
-        )
+            evaluation.evaluate_against_attacks(
+                model, validation_attacks, val_loader, parallel=args.parallel,
+                writer=writer, iteration=iteration, num_batches=args.val_batches,
+            )
 
-        checkpoint_fname = os.path.join(log_dir, f'{epoch:04d}.ckpt.pth')
-        print(f'CHECKPOINT {checkpoint_fname}')
-        checkpoint_model = model
-        if isinstance(checkpoint_model, nn.DataParallel):
-            checkpoint_model = checkpoint_model.module
-        if isinstance(checkpoint_model, FeatureModel):
-            checkpoint_model = checkpoint_model.model
-        state = {
-            'model': checkpoint_model.state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'iteration': iteration,
-            'arch': args.arch,
-        }
-        torch.save(state, checkpoint_fname)
+            checkpoint_fname = os.path.join(log_dir, f'{epoch:04d}.ckpt.pth')
+            print(f'CHECKPOINT {checkpoint_fname}')
+            checkpoint_model = model
+            if isinstance(checkpoint_model, nn.DataParallel):
+                checkpoint_model = checkpoint_model.module
+            if isinstance(checkpoint_model, FeatureModel):
+                checkpoint_model = checkpoint_model.model
+            state = {
+                'model': checkpoint_model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'iteration': iteration,
+                'arch': args.arch,
+            }
+            torch.save(state, checkpoint_fname)
 
         # delete extraneous checkpoints
         last_keep_checkpoint = (epoch // args.keep_every) * args.keep_every
