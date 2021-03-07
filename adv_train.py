@@ -8,12 +8,13 @@ import time
 import random
 import os
 from torch import nn
-from tensorboardX import SummaryWriter
-
+import wandb
+import pdb
 from perceptual_advex import evaluation
 from perceptual_advex.utilities import add_dataset_model_arguments, \
     get_dataset_model, calculate_accuracy
 from perceptual_advex.attacks import *
+from perceptual_advex.ci_attacks import *
 from perceptual_advex.models import FeatureModel
 
 VAL_ITERS = 100
@@ -65,7 +66,7 @@ if __name__ == '__main__':
                         help='attack(s) to harden against')
 
     args = parser.parse_args()
-
+    wandb.init(config=args)
     if args.optim == 'adam':
         if args.lr is None:
             args.lr = 1e-3
@@ -125,6 +126,7 @@ if __name__ == '__main__':
         StAdvAttack(model, num_iterations=VAL_ITERS),
         ReColorAdvAttack(model, num_iterations=VAL_ITERS),
         LagrangePerceptualAttack(model, num_iterations=30),
+        CIAttack(model, '../auto_aug-master/results/emb64_301/model_new.pth',num_iterations=VAL_ITERS)
     ]
 
     flags = []
@@ -163,7 +165,7 @@ if __name__ == '__main__':
             # sleep necessary to prevent weird bug where directory isn't
             # actually deleted
             time.sleep(5)
-    writer = SummaryWriter(log_dir)
+
 
     # optimizer
     optimizer: optim.Optimizer
@@ -228,14 +230,8 @@ if __name__ == '__main__':
         inputs: torch.Tensor,
         labels: torch.Tensor,
         iteration: int,
-        train: bool = True,
-        log_fn: Optional[Callable[[str, Any], Any]] = None,
+        train: bool = True
     ):
-        prefix = 'train' if train else 'val'
-        if log_fn is None:
-            log_fn = lambda tag, value: writer.add_scalar(
-                f'{prefix}/{tag}', value, iteration)
-
         model.eval()  # set model to eval to generate adversarial examples
 
         if torch.cuda.is_available():
@@ -280,8 +276,9 @@ if __name__ == '__main__':
 
         # LOGGING
         accuracy = calculate_accuracy(logits, all_labels)
-        log_fn('loss', loss.item())
-        log_fn('accuracy', accuracy.item())
+        wandb.log({'loss':loss.item()},step=iteration)
+        wandb.log({'accuracy':accuracy.item()},step=iteration)
+
 
         with torch.no_grad():
             for attack_index, attack in enumerate(step_attacks):
@@ -293,10 +290,8 @@ if __name__ == '__main__':
                     attack_index * inputs.size()[0]:
                     (attack_index + 1) * inputs.size()[0]
                 ]
-                log_fn(f'loss/{attack_name}',
-                       F.cross_entropy(attack_logits, labels).item())
-                log_fn(f'accuracy/{attack_name}',
-                       calculate_accuracy(attack_logits, labels).item())
+                wandb.log({f'loss-{attack_name}': F.cross_entropy(attack_logits, labels).item()},step=iteration)
+                wandb.log({f'accuracy-{attack_name}':calculate_accuracy(attack_logits, labels).item()},step=iteration)
 
         if train:
             print(f'ITER {iteration:06d}',
@@ -330,6 +325,7 @@ if __name__ == '__main__':
             iteration += 1
         print(f'END EPOCH {epoch:04d}')
 
+
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -340,7 +336,7 @@ if __name__ == '__main__':
 
             evaluation.evaluate_against_attacks(
                 model, validation_attacks, val_loader, parallel=args.parallel,
-                writer=writer, iteration=iteration, num_batches=args.val_batches,
+                wandb=wandb, iteration=iteration, num_batches=args.val_batches,
             )
 
             checkpoint_fname = os.path.join(log_dir, f'{epoch:04d}.ckpt.pth')
