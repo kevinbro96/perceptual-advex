@@ -145,14 +145,18 @@ if __name__ == '__main__':
     if args.optim != 'sgd':
         experiment_path_parts.append(args.optim)
     attacks_part = '-'.join(args.attack + flags)
-    if len(attacks_part) > 255:
-        attacks_part = (
-            attacks_part
-            .replace('model, ', '')
-            .replace("'imagenet100', ", '')
-            .replace("'cifar', ", '')
-            .replace(", num_iterations=10", '')
-        )
+
+    attacks_part = (
+        attacks_part
+        .replace("model, '" , '')
+        .replace("'imagenet100', ", '')
+        .replace("'cifar', ", '')
+        .replace(", num_iterations=10", '')
+        .replace('/results/','')
+        .replace('../auto_aug-master','')
+        .replace('resnet50','')
+        .replace("/model_new.pth')", '')
+    )
     experiment_path_parts.append(attacks_part)
     experiment_path = os.path.join(*experiment_path_parts)
 
@@ -165,7 +169,7 @@ if __name__ == '__main__':
             # sleep necessary to prevent weird bug where directory isn't
             # actually deleted
             time.sleep(5)
-
+    os.mkdir(log_dir)
 
     # optimizer
     optimizer: optim.Optimizer

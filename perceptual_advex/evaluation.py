@@ -1,4 +1,4 @@
-
+import wandb
 import torch
 import random
 import copy
@@ -8,7 +8,7 @@ from .distances import LPIPSDistance
 
 
 def evaluate_against_attacks(model, attacks, val_loader, parallel=1,
-                             writer=None, iteration=None, num_batches=None):
+                             wandb=None, iteration=None, num_batches=None):
     """
     Evaluates a model against the given attacks, printing the output and
     optionally writing it to a tensorboardX summary writer.
@@ -84,10 +84,8 @@ def evaluate_against_attacks(model, attacks, val_loader, parallel=1,
 
         correct = torch.cat(batches_correct)
         accuracy = correct.float().mean()
-        if writer is not None:
-            writer.add_scalar(f'val/{attack_name}/accuracy',
-                              accuracy.item(),
-                              iteration)
+        if wandb is not None:
+            wandb.log({f'val-{attack_name}-accuracy':accuracy.item()},step=iteration)
         print_cols.append(f'accuracy: {accuracy.item() * 100:.1f}%')
 
         print(*print_cols, sep='\t')
@@ -96,16 +94,14 @@ def evaluate_against_attacks(model, attacks, val_loader, parallel=1,
             ('alexnet', successful_alexnet_lpips),
             ('model', successful_model_lpips),
         ]:
-            if len(successful_lpips) > 0 and writer is not None:
-                writer.add_histogram(f'val/{attack_name}/lpips/{lpips_name}',
-                                     torch.stack(successful_lpips)
-                                     .cpu().detach().numpy(),
-                                     iteration)
+            if len(successful_lpips) > 0 and wandb is not None:
+                wandb.log({f'val-{attack_name}-lpips/{lpips_name}':
+                                     wandb.Histogram(torch.stack(successful_lpips)
+                                     .cpu().detach().numpy())},step=iteration)
 
-        if len(successful_attacks) > 0 and writer is not None:
-            writer.add_image(f'val/{attack_name}/images',
-                             torch.cat(successful_attacks, dim=2),
-                             iteration)
+        if len(successful_attacks) > 0 and wandb is not None:
+            wandb.log({f'val-{attack_name}-images':[
+                             wandb.Image(torch.cat(successful_attacks, dim=2))]},step=iteration)
 
         new_model_state_dict = copy.deepcopy(model.state_dict())
         for key in model_state_dict:

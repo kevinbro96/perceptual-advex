@@ -172,6 +172,7 @@ class CIAttack(nn.Module):
                 adv_xi = self.vae(hidden + delta, mode="hi-xi")
                 adv_sample = xd.detach() + adv_xi
                 adv_sample = self.innormalize(adv_sample)
+                adv_sample = torch.clamp(adv_sample, 0, 1)
                 s = self.model(adv_sample)
                 delta.grad.data.zero_()
 
