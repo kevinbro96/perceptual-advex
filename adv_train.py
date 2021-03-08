@@ -126,9 +126,9 @@ if __name__ == '__main__':
         StAdvAttack(model, num_iterations=VAL_ITERS),
         ReColorAdvAttack(model, num_iterations=VAL_ITERS),
         LagrangePerceptualAttack(model, num_iterations=30),
-        CIAttack(model, '../auto_aug-master/results/emb64_301/model_new.pth',num_iterations=VAL_ITERS)
+        eval(args.attack[0].replace(")", ",num_iterations=VAL_ITERS)"))
     ]
-
+    pdb.set_trace()
     flags = []
     if args.only_attack_correct:
         flags.append('only_attack_correct')
