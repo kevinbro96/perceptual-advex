@@ -64,6 +64,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--attack', type=str, action='append',
                         help='attack(s) to harden against')
+    parser.add_argument('--vae_dir', type=str, default='../auto_aug-master/results/emb64_1_5/model_new.pth')
+    parser.add_argument('--eps', type=float, default=1.0,
+                        help='eps ball')
 
     args = parser.parse_args()
     wandb.init(config=args)
@@ -126,9 +129,9 @@ if __name__ == '__main__':
         StAdvAttack(model, num_iterations=VAL_ITERS),
         ReColorAdvAttack(model, num_iterations=VAL_ITERS),
         LagrangePerceptualAttack(model, num_iterations=30),
-        eval(args.attack[0].replace(")", ",num_iterations=VAL_ITERS)"))
+        CIAttack(model, "../auto_aug-master/results/emb64_1_5/model_new.pth", num_iterations=VAL_ITERS)
     ]
-    pdb.set_trace()
+
     flags = []
     if args.only_attack_correct:
         flags.append('only_attack_correct')
@@ -155,7 +158,7 @@ if __name__ == '__main__':
         .replace('/results/','')
         .replace('../auto_aug-master','')
         .replace('resnet50','')
-        .replace("/model_new.pth')", '')
+        .replace("/model_new.pth'", '')
     )
     experiment_path_parts.append(attacks_part)
     experiment_path = os.path.join(*experiment_path_parts)
@@ -163,13 +166,13 @@ if __name__ == '__main__':
     iteration = 0
     log_dir = os.path.join(args.log_dir, experiment_path)
     if os.path.exists(log_dir):
-        print(f'The log directory {log_dir} exists, delete? (y/N) ', end='')
-        if not vars(args)['continue'] and input().strip() == 'y':
+        #print(f'The log directory {log_dir} exists, delete? (y/N) ', end='')
+        #if not vars(args)['continue'] and input().strip() == 'y':
             shutil.rmtree(log_dir)
             # sleep necessary to prevent weird bug where directory isn't
             # actually deleted
             time.sleep(5)
-    os.mkdir(log_dir)
+    os.makedirs(log_dir)
 
     # optimizer
     optimizer: optim.Optimizer
