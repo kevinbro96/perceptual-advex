@@ -327,7 +327,6 @@ if __name__ == '__main__':
                 xi = vae(cifar_normalize(inputs[to_attack]), mode="x-xi")  #-1~1
                 xi = cifar_innormalize(xi) #0~1
                 xd = inputs[to_attack] - xi #0~1
-                xd = torch.clamp(xd, 0, 1) 
                 attack_xd = attack(xd.detach(), labels[to_attack])
                 attack_adv_inputs[to_attack] = attack_xd + xi
                 attack_adv_inputs[to_attack] = torch.clamp(attack_adv_inputs[to_attack],0,1)
